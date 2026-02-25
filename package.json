@@ -1,0 +1,28 @@
+{
+  "name": "goodthings",
+  "version": "1.0.0",
+  "description": "",
+  "main": "auth.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "cp index.html style.css script.js auth.js sync.js config.js manifest.json sw.js www/ && cp icons/* www/icons/",
+    "sync": "npm run build && npx cap sync"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joedunn-25/GoodThings.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/joedunn-25/GoodThings/issues"
+  },
+  "homepage": "https://github.com/joedunn-25/GoodThings#readme",
+  "dependencies": {
+    "@capacitor/cli": "^8.1.0",
+    "@capacitor/core": "^8.1.0",
+    "@capacitor/ios": "^8.1.0"
+  }
+}

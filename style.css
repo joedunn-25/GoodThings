@@ -1,0 +1,483 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --primary: #ff8c42;
+  --primary-dark: #e67635;
+  --accent: #2ec4b6;
+  --success: #2ec4b6;
+  --bg: #ffffff;
+  --card-bg: #ffffff;
+  --text: #2d3748;
+  --text-light: #718096;
+  --shadow: 0 4px 20px rgba(255, 140, 66, 0.15);
+}
+
+html {
+  font-size: 16px;
+  height: 100%;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(180deg, #ffffff 0%, #fff8f3 100%);
+  height: 100%;
+  overflow: hidden;
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app {
+  max-width: 500px;
+  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.entry-area {
+  flex-shrink: 0;
+  padding: 20px 20px 0;
+}
+
+.list-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 20px 20px;
+}
+
+/* Big Add Button */
+.add-btn {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #ff8c42 0%, #ffab73 100%);
+  color: white;
+  font-size: 3rem;
+  font-weight: 300;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px auto;
+  box-shadow:
+    0 8px 30px rgba(255, 140, 66, 0.4),
+    0 2px 8px rgba(255, 140, 66, 0.2);
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 10;
+}
+
+.add-btn:hover {
+  transform: scale(1.05);
+  box-shadow:
+    0 12px 40px rgba(255, 140, 66, 0.5),
+    0 4px 12px rgba(255, 140, 66, 0.3);
+}
+
+.add-btn:active {
+  transform: scale(0.98);
+}
+
+.add-btn .mic-icon {
+  width: 36px;
+  height: 36px;
+}
+
+.add-btn.hidden {
+  display: none;
+}
+
+/* Entry Form */
+.entry-form {
+  background: var(--card-bg);
+  border-radius: 20px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: var(--shadow);
+  display: none;
+  animation: slideDown 0.2s ease;
+}
+
+.entry-form.active {
+  display: block;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.entry-form textarea {
+  width: 100%;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 1.1rem;
+  font-family: inherit;
+  resize: none;
+  transition: border-color 0.2s;
+}
+
+.entry-form textarea:focus {
+  outline: none;
+  border-color: #2ec4b6;
+}
+
+.entry-form textarea::placeholder {
+  color: #a0aec0;
+}
+
+.voice-status {
+  font-size: 0.85rem;
+  color: #2ec4b6;
+  text-align: center;
+  min-height: 20px;
+  margin-top: 8px;
+}
+
+.voice-status.error {
+  color: #e53e3e;
+}
+
+/* Listening state for add button */
+.add-btn.listening {
+  background: linear-gradient(135deg, #2ec4b6 0%, #1aa393 100%);
+  box-shadow:
+    0 8px 30px rgba(46, 196, 182, 0.4),
+    0 2px 8px rgba(46, 196, 182, 0.2);
+}
+
+.add-btn.listening::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #2ec4b6;
+  animation: pulse 1.5s ease-out infinite;
+  z-index: -1;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.form-actions button {
+  flex: 1;
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.cancel-btn {
+  background: #edf2f7;
+  color: var(--text-light);
+}
+
+.cancel-btn:hover {
+  background: #e2e8f0;
+}
+
+.save-btn {
+  background: linear-gradient(135deg, #2ec4b6 0%, #1aa393 100%);
+  color: white;
+}
+
+.save-btn:hover {
+  box-shadow: 0 4px 15px rgba(46, 196, 182, 0.4);
+}
+
+/* Good Things List */
+.good-things-list {
+  margin-top: 16px;
+}
+
+.good-thing-card {
+  background: var(--card-bg);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+  animation: fadeIn 0.3s ease;
+  position: relative;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.good-thing-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, #ff8c42 0%, #ffab73 100%);
+  border-radius: 4px 0 0 4px;
+}
+
+.good-thing-text {
+  font-size: 1.1rem;
+  line-height: 1.5;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+
+.good-thing-time {
+  font-size: 0.85rem;
+  color: var(--text-light);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.good-thing-time::before {
+  content: '✨';
+  font-size: 0.9rem;
+}
+
+.delete-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #cbd5e0;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.delete-btn:hover {
+  color: #e53e3e;
+  background: #fed7d7;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-light);
+}
+
+.empty-state p {
+  margin-bottom: 8px;
+}
+
+.empty-state.hidden {
+  display: none;
+}
+
+/* Login screen */
+.login-screen {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(180deg, #ffffff 0%, #fff8f3 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 100;
+}
+
+.login-screen.hidden {
+  display: none;
+}
+
+.login-card {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 40px 28px 32px;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: 0 4px 40px rgba(255, 140, 66, 0.15);
+  text-align: center;
+}
+
+.login-logo {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+}
+
+.login-card h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.login-subtitle {
+  color: var(--text-light);
+  margin-bottom: 28px;
+  font-size: 0.95rem;
+}
+
+#loginForm input[type="email"] {
+  width: 100%;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  font-size: 1rem;
+  font-family: inherit;
+  margin-bottom: 12px;
+  transition: border-color 0.2s;
+  text-align: center;
+  display: block;
+}
+
+#loginForm input[type="email"]:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.login-btn {
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  background: linear-gradient(135deg, #ff8c42 0%, #ffab73 100%);
+  color: white;
+  transition: all 0.2s;
+  margin-bottom: 16px;
+  font-family: inherit;
+}
+
+.login-btn:hover {
+  box-shadow: 0 4px 15px rgba(255, 140, 66, 0.4);
+}
+
+.login-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login-hint {
+  font-size: 0.8rem;
+  color: var(--text-light);
+  line-height: 1.5;
+}
+
+.login-error {
+  font-size: 0.85rem;
+  color: #e53e3e;
+  margin-bottom: 10px;
+}
+
+.login-sent-msg {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 12px;
+}
+
+/* App header */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px 0;
+  flex-shrink: 0;
+}
+
+.app-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.logout-btn {
+  background: none;
+  border: none;
+  font-size: 0.8rem;
+  color: var(--text-light);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: color 0.2s;
+  font-family: inherit;
+}
+
+.logout-btn:hover {
+  color: var(--text);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Mobile optimizations */
+@media (max-width: 400px) {
+  .entry-area {
+    padding: 12px 12px 0;
+  }
+
+  .list-area {
+    padding: 0 12px 12px;
+  }
+
+  header h1 {
+    font-size: 1.75rem;
+  }
+
+  .add-btn {
+    width: 70px;
+    height: 70px;
+    font-size: 2.5rem;
+  }
+}
+
+/* Safe area for notched phones */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .list-area {
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+}

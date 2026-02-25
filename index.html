@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+  <!-- PWA Meta Tags -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Good Things">
+  <meta name="theme-color" content="#ff8c42">
+  <meta name="description" content="Capture life's bright moments">
+
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Icons -->
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
+
+  <title>Good Things</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Login screen — shown when user is not authenticated -->
+  <div class="login-screen hidden" id="loginScreen">
+    <div class="login-card">
+      <div class="login-logo">✨</div>
+      <h1>Good Things</h1>
+      <p class="login-subtitle">Capture life's bright moments</p>
+
+      <div id="loginForm">
+        <input
+          type="email"
+          id="loginEmail"
+          placeholder="your@email.com"
+          autocomplete="email"
+          inputmode="email"
+        />
+        <p class="login-error hidden" id="loginError"></p>
+        <button class="login-btn" id="loginBtn">Send magic link</button>
+        <p class="login-hint">Enter your email — we'll send a sign-in link. No password needed.</p>
+      </div>
+
+      <div id="loginSent" class="hidden">
+        <p class="login-sent-msg">✉️ Check your email</p>
+        <p class="login-hint">We sent a sign-in link to your email address. Tap it to continue.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main app -->
+  <div class="app">
+    <!-- Slim header with app name + sign out -->
+    <div class="app-header" id="appHeader">
+      <span class="app-title">Good Things</span>
+      <button class="logout-btn" id="logoutBtn">Sign out</button>
+    </div>
+
+    <main>
+      <!-- Fixed top: button + form -->
+      <div class="entry-area">
+        <!-- Big Add Button - tap for voice, hold for text -->
+        <button class="add-btn" id="addBtn" aria-label="Add a good thing">
+          <svg class="mic-icon" viewBox="0 0 24 24" fill="currentColor" width="36" height="36">
+            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+          </svg>
+        </button>
+
+        <!-- Entry Form (hidden initially) -->
+        <div class="entry-form" id="entryForm">
+          <textarea
+            id="goodThingInput"
+            placeholder="What good thing happened?"
+            rows="2"
+            maxlength="280"
+          ></textarea>
+          <div class="voice-status" id="voiceStatus"></div>
+          <div class="form-actions">
+            <button class="cancel-btn" id="cancelBtn">Cancel</button>
+            <button class="save-btn" id="saveBtn">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scrollable list area -->
+      <div class="list-area">
+        <div class="good-things-list" id="goodThingsList">
+          <!-- Entries will be inserted here -->
+        </div>
+
+        <div class="empty-state" id="emptyState">
+          <p>No good things yet.</p>
+          <p>Tap <strong>+</strong> to add your first one!</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Supabase JS v2 via CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- App config (fill in your Supabase credentials) -->
+  <script src="config.js"></script>
+  <!-- Auth and sync modules -->
+  <script src="auth.js"></script>
+  <script src="sync.js"></script>
+  <!-- Main app -->
+  <script src="script.js"></script>
+</body>
+</html>

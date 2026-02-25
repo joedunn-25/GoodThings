@@ -17,6 +17,9 @@ class GoodThings {
     this.loginSent = document.getElementById('loginSent');
     this.loginFormEl = document.getElementById('loginForm');
     this.logoutBtn = document.getElementById('logoutBtn');
+    this.otpInput = document.getElementById('otpInput');
+    this.otpError = document.getElementById('otpError');
+    this.verifyBtn = document.getElementById('verifyBtn');
 
     this.recognition = null;
     this.isListening = false;
@@ -64,6 +67,11 @@ class GoodThings {
     this.loginEmail.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') this.handleLogin();
     });
+
+    this.verifyBtn.addEventListener('click', () => this.handleVerify());
+    this.otpInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') this.handleVerify();
+    });
   }
 
   async handleLogin() {
@@ -78,7 +86,7 @@ class GoodThings {
 
     if (error) {
       this.loginBtn.disabled = false;
-      this.loginBtn.textContent = 'Send magic link';
+      this.loginBtn.textContent = 'Send code';
       this.loginError.textContent = error.message || 'Something went wrong. Please try again.';
       this.loginError.classList.remove('hidden');
       return;
@@ -86,6 +94,29 @@ class GoodThings {
 
     this.loginFormEl.classList.add('hidden');
     this.loginSent.classList.remove('hidden');
+    this.otpInput.focus();
+  }
+
+  async handleVerify() {
+    const email = this.loginEmail.value.trim();
+    const token = this.otpInput.value.trim();
+    if (!token || token.length !== 6) return;
+
+    this.verifyBtn.disabled = true;
+    this.verifyBtn.textContent = 'Verifying...';
+    this.otpError.classList.add('hidden');
+
+    const { error } = await AppAuth.verifyOtp(email, token);
+
+    if (error) {
+      this.verifyBtn.disabled = false;
+      this.verifyBtn.textContent = 'Verify code';
+      this.otpError.textContent = error.message || 'Invalid code. Please try again.';
+      this.otpError.classList.remove('hidden');
+      return;
+    }
+
+    window.location.reload();
   }
 
   // ── Speech recognition ────────────────────────────────────

@@ -18,6 +18,7 @@
       currentUser: null,
       async init() { return null; },
       async signIn() { return { message: 'App not configured. Please fill in config.js.' }; },
+      async verifyOtp() { return { error: { message: 'App not configured. Please fill in config.js.' } }; },
       async signOut() {}
     };
     return;
@@ -30,12 +31,10 @@
     currentUser: null,
 
     async init() {
-      // Supabase JS v2 automatically detects the #access_token hash from a
-      // magic link redirect and calls setSession() before getSession() resolves.
       const { data: { session } } = await _supabase.auth.getSession();
       this.currentUser = session?.user ?? null;
 
-      // Clean the hash fragment so it's not accidentally shared
+      // Clean any stale hash fragment (defensive, no longer expected)
       if (window.location.hash.includes('access_token')) {
         history.replaceState(null, '', window.location.pathname);
       }
@@ -44,13 +43,21 @@
     },
 
     async signIn(email) {
-      const { error } = await _supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: window.location.origin + window.location.pathname
-        }
-      });
+      // Omitting emailRedirectTo sends a 6-digit OTP code instead of a magic link
+      const { error } = await _supabase.auth.signInWithOtp({ email });
       return error; // null on success
+    },
+
+    async verifyOtp(email, token) {
+      const { data, error } = await _supabase.auth.verifyOtp({
+        email,
+        token,
+        type: 'email'
+      });
+      if (!error) {
+        this.currentUser = data.user;
+      }
+      return { data, error };
     },
 
     async signOut() {

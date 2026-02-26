@@ -298,6 +298,7 @@ class GoodThings {
       if (e.target.closest('.info-btn'))              this.toggleInfoPanel(id);
       else if (e.target.closest('.fav-btn'))               this.toggleFavorite(id);
       else if (e.target.closest('.category-pill'))         this.setCategory(id, e.target.closest('.category-pill').dataset.category);
+      else if (e.target.closest('.card-photo-thumb'))         this.openLightbox(e.target.closest('.card-photo-thumb').src);
       else if (e.target.closest('.photo-thumb'))             this.openLightbox(e.target.closest('.photo-thumb').src);
       else if (e.target.closest('.add-photo-btn'))         this.capturePhoto(id);
       else if (e.target.closest('.countdown-dismiss-btn')) this.dismissCategoryPanel(id);
@@ -776,11 +777,22 @@ class GoodThings {
   }
 
   _updatePhotoInDOM(entryId, dataUrl) {
+    // Add inline thumbnail to card row
+    const card = document.querySelector(`.good-thing-card[data-id="${entryId}"]`);
+    if (card) {
+      const actions = card.querySelector('.card-actions');
+      if (actions && !card.querySelector('.card-photo')) {
+        const photoDiv = document.createElement('div');
+        photoDiv.className = 'card-photo';
+        photoDiv.innerHTML = `<img class="card-photo-thumb" src="${dataUrl}" alt="Entry photo">`;
+        card.insertBefore(photoDiv, actions);
+      }
+    }
+    // Remove "Add photo" button from info panel
     const panel = document.getElementById(`info-panel-${entryId}`);
-    if (!panel) return;
-    const photoSlot = panel.querySelector('.photo-slot');
-    if (photoSlot) {
-      photoSlot.innerHTML = `<img class="photo-thumb" src="${dataUrl}" alt="Entry photo">`;
+    if (panel) {
+      const photoSlot = panel.querySelector('.photo-slot');
+      if (photoSlot) photoSlot.remove();
     }
   }
 
@@ -1012,6 +1024,12 @@ class GoodThings {
             </div>
           </div>
 
+          ${entry.photo
+            ? `<div class="card-photo">
+                <img class="card-photo-thumb" src="${entry.photo}" alt="Entry photo">
+              </div>`
+            : ''}
+
           <div class="card-actions">
             <button class="info-btn" aria-label="More info" data-id="${entry.id}">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
@@ -1033,15 +1051,14 @@ class GoodThings {
           <div class="info-panel" id="info-panel-${entry.id}">
             <div class="info-panel-row">
               ${locationHtml}
-              <div class="photo-slot">
-                ${entry.photo
-                  ? `<img class="photo-thumb" src="${entry.photo}" alt="Entry photo">`
-                  : `<button class="add-photo-btn add-photo-btn-info">
+              ${!entry.photo
+                ? `<div class="photo-slot">
+                    <button class="add-photo-btn add-photo-btn-info">
                       <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
                       Add photo
-                    </button>`
-                }
-              </div>
+                    </button>
+                  </div>`
+                : ''}
             </div>
           </div>
 

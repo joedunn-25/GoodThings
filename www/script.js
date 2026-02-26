@@ -656,10 +656,11 @@ class GoodThings {
 
   _formatLocation(addr, displayName) {
     if (!addr) return displayName?.split(',').slice(0, 2).join(',').trim() || null;
-    const suburb = addr.suburb || addr.neighbourhood || addr.city_district || addr.village;
-    const city   = addr.city || addr.town || addr.county;
-    if (suburb && city) return `${suburb}, ${city}`;
-    if (city)           return city;
+    const place = addr.suburb || addr.neighbourhood || addr.city_district || addr.hamlet || addr.village || addr.road;
+    const area  = addr.city || addr.town || addr.county;
+    if (place && area && place !== area) return `${place}, ${area}`;
+    if (place) return place;
+    if (area)  return area;
     return displayName?.split(',').slice(0, 2).join(',').trim() || null;
   }
 

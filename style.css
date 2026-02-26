@@ -55,6 +55,7 @@ main {
   align-items: center;
   justify-content: space-between;
   padding: 14px 20px 0;
+  padding-top: calc(14px + env(safe-area-inset-top, 0px));
   flex-shrink: 0;
 }
 

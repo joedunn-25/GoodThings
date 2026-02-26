@@ -320,6 +320,15 @@ class GoodThings {
     this.openCategoryPanel(entry.id);
     AppSync.syncAdd(entry);
     this._captureLocation(entry); // fire and forget
+
+    // Safety net: if location never resolves within 15 s, remove the pending row
+    setTimeout(() => {
+      if (!entry.location_name) {
+        const panel = document.getElementById(`info-panel-${entry.id}`);
+        const row = panel?.querySelector('.info-location.info-pending');
+        if (row) row.remove();
+      }
+    }, 15000);
   }
 
   deleteEntry(id) {
@@ -515,7 +524,11 @@ class GoodThings {
 
       AppSync.syncUpdate(entry);
     } catch (err) {
-      // Silently fail — location is best-effort
+      console.error('Location capture failed:', err?.message || err);
+      // Remove the "Getting location…" row so it doesn't stay on screen forever
+      const panel = document.getElementById(`info-panel-${entry.id}`);
+      const row = panel?.querySelector('.info-location.info-pending');
+      if (row) row.remove();
     }
   }
 
@@ -654,7 +667,7 @@ class GoodThings {
 
     // Location row in info panel
     const entryAge = Date.now() - new Date(entry.timestamp).getTime();
-    const isNew = entryAge < 30000;
+    const isNew = entryAge < 20000;
     let locationHtml = '';
     if (entry.location_name) {
       locationHtml = `

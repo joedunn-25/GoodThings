@@ -1,4 +1,4 @@
-const CACHE_NAME = 'good-things-v13';
+const CACHE_NAME = 'good-things-v15';
 const ASSETS = [
   '/',
   '/index.html',

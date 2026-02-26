@@ -57,5 +57,7 @@
 	<string>Good Things uses the camera to attach photos to your entries.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Good Things accesses your photo library to attach photos to your entries.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Good Things may save photos to your library.</string>
 </dict>
 </plist>

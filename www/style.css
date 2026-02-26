@@ -511,6 +511,37 @@ main {
   display: block;
 }
 
+/* ── Photo lightbox ────────────────────────────────────────────────────── */
+
+.photo-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.photo-lightbox.visible {
+  opacity: 1;
+}
+
+.photo-lightbox img {
+  max-width: 92vw;
+  max-height: 85vh;
+  object-fit: contain;
+  border-radius: 12px;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+}
+
 .add-photo-btn-info {
   width: 64px;
   height: 64px;

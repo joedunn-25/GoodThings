@@ -294,6 +294,7 @@ class GoodThings {
       if (e.target.closest('.info-btn'))              this.toggleInfoPanel(id);
       else if (e.target.closest('.fav-btn'))               this.toggleFavorite(id);
       else if (e.target.closest('.category-pill'))         this.setCategory(id, e.target.closest('.category-pill').dataset.category);
+      else if (e.target.closest('.photo-thumb'))             this.openLightbox(e.target.closest('.photo-thumb').src);
       else if (e.target.closest('.add-photo-btn'))         this.capturePhoto(id);
       else if (e.target.closest('.countdown-dismiss-btn')) this.dismissCategoryPanel(id);
     });
@@ -669,9 +670,18 @@ class GoodThings {
   async capturePhoto(entryId) {
     try {
       let base64;
+      console.log('[Photo] Starting. isNative:', this.isNative,
+        'CapCamera:', !!window.Capacitor?.Plugins?.Camera);
 
       if (this.isNative && window.Capacitor?.Plugins?.Camera) {
         const Camera = window.Capacitor.Plugins.Camera;
+
+        // Capacitor 8 requires explicit permission request before getPhoto
+        console.log('[Photo] Requesting camera permissions…');
+        const perms = await Camera.requestPermissions({ permissions: ['camera', 'photos'] });
+        console.log('[Photo] Permission status:', JSON.stringify(perms));
+
+        console.log('[Photo] Calling getPhoto…');
         const image = await Camera.getPhoto({
           quality: 80,
           allowEditing: false,
@@ -680,15 +690,19 @@ class GoodThings {
           width: 800,
           height: 800
         });
+        console.log('[Photo] Got image, format:', image.format, 'length:', image.base64String?.length);
         base64 = `data:image/${image.format};base64,${image.base64String}`;
       } else {
+        console.log('[Photo] Using web file picker fallback');
         base64 = await this._pickPhotoWeb();
       }
 
-      if (!base64) return; // user cancelled
+      if (!base64) { console.log('[Photo] No image (user cancelled)'); return; }
 
       // Resize via canvas to max 400px, JPEG 0.7
+      console.log('[Photo] Resizing…');
       const resized = await this._resizePhoto(base64, 400, 0.7);
+      console.log('[Photo] Resized, length:', resized.length);
 
       const entry = this.goodThings.find(e => e.id === entryId);
       if (!entry) return;
@@ -699,9 +713,13 @@ class GoodThings {
       this._updatePhotoInDOM(entryId, resized);
 
       AppSync.syncUpdate(entry);
+      console.log('[Photo] Saved and synced');
     } catch (err) {
-      if (err?.message?.includes('cancelled') || err?.message?.includes('canceled') || err?.message?.includes('User cancelled')) return;
-      console.error('[Photo] Capture failed:', err?.message || err);
+      if (err?.message?.includes('cancelled') || err?.message?.includes('canceled') || err?.message?.includes('User cancelled')) {
+        console.log('[Photo] User cancelled');
+        return;
+      }
+      console.error('[Photo] Capture failed:', err?.message || err, err);
     }
   }
 
@@ -760,6 +778,72 @@ class GoodThings {
     if (photoSlot) {
       photoSlot.innerHTML = `<img class="photo-thumb" src="${dataUrl}" alt="Entry photo">`;
     }
+  }
+
+  // ── Photo lightbox ────────────────────────────────────────────────────
+
+  openLightbox(src) {
+    // Create overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'photo-lightbox';
+    overlay.innerHTML = `<img src="${src}" alt="Full photo">`;
+    document.body.appendChild(overlay);
+
+    const img = overlay.querySelector('img');
+
+    // Fade in
+    requestAnimationFrame(() => overlay.classList.add('visible'));
+
+    // Close on tap (anywhere on the overlay)
+    overlay.addEventListener('click', () => this._closeLightbox(overlay, img));
+
+    // Swipe down to dismiss
+    let startY = 0, currentY = 0, dragging = false;
+
+    overlay.addEventListener('touchstart', (e) => {
+      startY = e.touches[0].clientY;
+      currentY = startY;
+      dragging = true;
+      img.style.transition = 'none';
+    }, { passive: true });
+
+    overlay.addEventListener('touchmove', (e) => {
+      if (!dragging) return;
+      currentY = e.touches[0].clientY;
+      const dy = currentY - startY;
+      // Only allow downward drag
+      if (dy > 0) {
+        img.style.transform = `translateY(${dy}px)`;
+        img.style.opacity = Math.max(0, 1 - dy / 300);
+        overlay.style.background = `rgba(0,0,0,${Math.max(0, 0.92 - dy / 400)})`;
+      }
+    }, { passive: true });
+
+    overlay.addEventListener('touchend', () => {
+      if (!dragging) return;
+      dragging = false;
+      const dy = currentY - startY;
+      if (dy > 80) {
+        // Dismiss — fling down
+        this._closeLightbox(overlay, img, dy);
+      } else {
+        // Snap back
+        img.style.transition = 'transform 0.25s ease, opacity 0.25s ease';
+        img.style.transform = 'translateY(0)';
+        img.style.opacity = '1';
+        overlay.style.transition = 'background 0.25s ease';
+        overlay.style.background = 'rgba(0,0,0,0.92)';
+      }
+    }, { passive: true });
+  }
+
+  _closeLightbox(overlay, img, swipeDy = 0) {
+    img.style.transition = 'transform 0.25s ease, opacity 0.25s ease';
+    img.style.transform = `translateY(${swipeDy > 0 ? '120vh' : '0'})`;
+    img.style.opacity = '0';
+    overlay.style.transition = 'opacity 0.25s ease';
+    overlay.classList.remove('visible');
+    setTimeout(() => overlay.remove(), 280);
   }
 
   // ── Data ──────────────────────────────────────────────────────────────────

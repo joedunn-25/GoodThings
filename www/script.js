@@ -473,6 +473,11 @@ class GoodThings {
       let coords;
 
       if (this.isNative && window.Capacitor?.Plugins?.Geolocation) {
+        // Trigger the iOS permission dialog (required in Capacitor 8 before getCurrentPosition)
+        const status = await window.Capacitor.Plugins.Geolocation.requestPermissions();
+        if (status.location !== 'granted' && status.location !== 'limited') {
+          throw new Error('Location permission ' + status.location);
+        }
         const position = await window.Capacitor.Plugins.Geolocation.getCurrentPosition({
           timeout: 10000,
           enableHighAccuracy: false

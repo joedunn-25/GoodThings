@@ -16,7 +16,7 @@
   --text-light:    #718096;
   --shadow-card:   0 2px 12px rgba(0, 0, 0, 0.07);
   --card-radius:   16px;
-  --new-tint:      rgba(46, 196, 182, 0.08);
+  --new-tint:      #eefaf9;
 }
 
 html {

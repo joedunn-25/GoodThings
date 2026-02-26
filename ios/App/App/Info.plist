@@ -53,5 +53,9 @@
 	<string>Good Things uses speech recognition to transcribe your voice into text.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Good Things uses your location to remember where you were.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Good Things uses the camera to attach photos to your entries.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Good Things accesses your photo library to attach photos to your entries.</string>
 </dict>
 </plist>

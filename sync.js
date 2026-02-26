@@ -34,7 +34,8 @@ window.AppSync = {
         timestamp: entry.timestamp,
         category: entry.category || null,
         favorite: entry.favorite || false,
-        location_name: entry.location_name || null
+        location_name: entry.location_name || null,
+        photo: entry.photo || null
       },
       { onConflict: 'id', ignoreDuplicates: true }
     );
@@ -53,7 +54,8 @@ window.AppSync = {
         timestamp: entry.timestamp,
         category: entry.category || null,
         favorite: entry.favorite || false,
-        location_name: entry.location_name || null
+        location_name: entry.location_name || null,
+        photo: entry.photo || null
       },
       { onConflict: 'id', ignoreDuplicates: false }
     );
@@ -90,7 +92,8 @@ window.AppSync = {
         timestamp: e.timestamp,
         category: e.category || null,
         favorite: e.favorite || false,
-        location_name: e.location_name || null
+        location_name: e.location_name || null,
+        photo: e.photo || null
       }));
       const { error } = await this._db.from('entries')
         .upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
@@ -113,7 +116,7 @@ window.AppSync = {
     if (!this._db || !this._userId) return;
 
     const { data: remote, error } = await this._db.from('entries')
-      .select('id, text, timestamp, category, favorite, location_name')
+      .select('id, text, timestamp, category, favorite, location_name, photo')
       .eq('user_id', this._userId)
       .order('timestamp', { ascending: false });
 
@@ -138,7 +141,8 @@ window.AppSync = {
         timestamp: e.timestamp,
         category: e.category || null,
         favorite: e.favorite || false,
-        location_name: e.location_name || null
+        location_name: e.location_name || null,
+        photo: e.photo || null
       }));
 
     if (toUpload.length) {
@@ -155,7 +159,8 @@ window.AppSync = {
         timestamp: e.timestamp,
         category: e.category || null,
         favorite: e.favorite || false,
-        location_name: e.location_name || null
+        location_name: e.location_name || null,
+        photo: e.photo || null
       }));
 
     // Merge and sort newest-first

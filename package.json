@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/joedunn-25/GoodThings#readme",
   "dependencies": {
+    "@capacitor/camera": "^8.0.1",
     "@capacitor/cli": "^8.1.0",
     "@capacitor/core": "^8.1.0",
     "@capacitor/geolocation": "^8.1.0",

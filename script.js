@@ -294,7 +294,7 @@ class GoodThings {
       if (e.target.closest('.info-btn'))              this.toggleInfoPanel(id);
       else if (e.target.closest('.fav-btn'))               this.toggleFavorite(id);
       else if (e.target.closest('.category-pill'))         this.setCategory(id, e.target.closest('.category-pill').dataset.category);
-      else if (e.target.closest('.add-photo-btn'))         alert('Photo support coming soon!');
+      else if (e.target.closest('.add-photo-btn'))         this.capturePhoto(id);
       else if (e.target.closest('.countdown-dismiss-btn')) this.dismissCategoryPanel(id);
     });
 
@@ -664,6 +664,104 @@ class GoodThings {
     return displayName?.split(',').slice(0, 2).join(',').trim() || null;
   }
 
+  // ── Photo capture ──────────────────────────────────────────────────────
+
+  async capturePhoto(entryId) {
+    try {
+      let base64;
+
+      if (this.isNative && window.Capacitor?.Plugins?.Camera) {
+        const Camera = window.Capacitor.Plugins.Camera;
+        const image = await Camera.getPhoto({
+          quality: 80,
+          allowEditing: false,
+          resultType: 'base64',
+          source: 'prompt',
+          width: 800,
+          height: 800
+        });
+        base64 = `data:image/${image.format};base64,${image.base64String}`;
+      } else {
+        base64 = await this._pickPhotoWeb();
+      }
+
+      if (!base64) return; // user cancelled
+
+      // Resize via canvas to max 400px, JPEG 0.7
+      const resized = await this._resizePhoto(base64, 400, 0.7);
+
+      const entry = this.goodThings.find(e => e.id === entryId);
+      if (!entry) return;
+      entry.photo = resized;
+      this.save();
+
+      // Update DOM — swap add-photo placeholder with thumbnail in info panel
+      this._updatePhotoInDOM(entryId, resized);
+
+      AppSync.syncUpdate(entry);
+    } catch (err) {
+      if (err?.message?.includes('cancelled') || err?.message?.includes('canceled') || err?.message?.includes('User cancelled')) return;
+      console.error('[Photo] Capture failed:', err?.message || err);
+    }
+  }
+
+  _pickPhotoWeb() {
+    return new Promise((resolve) => {
+      let input = document.getElementById('photoFileInput');
+      if (!input) {
+        input = document.createElement('input');
+        input.type = 'file';
+        input.id = 'photoFileInput';
+        input.accept = 'image/*';
+        input.style.display = 'none';
+        document.body.appendChild(input);
+      }
+      input.value = '';
+
+      input.onchange = () => {
+        const file = input.files?.[0];
+        if (!file) { resolve(null); return; }
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
+      };
+
+      input.click();
+    });
+  }
+
+  _resizePhoto(dataUrl, maxDim, quality) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > maxDim || h > maxDim) {
+          const ratio = Math.min(maxDim / w, maxDim / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = dataUrl;
+    });
+  }
+
+  _updatePhotoInDOM(entryId, dataUrl) {
+    const panel = document.getElementById(`info-panel-${entryId}`);
+    if (!panel) return;
+    const photoSlot = panel.querySelector('.photo-slot');
+    if (photoSlot) {
+      photoSlot.innerHTML = `<img class="photo-thumb" src="${dataUrl}" alt="Entry photo">`;
+    }
+  }
+
   // ── Data ──────────────────────────────────────────────────────────────────
 
   normaliseEntry(entry) {
@@ -847,9 +945,14 @@ class GoodThings {
           <div class="info-panel" id="info-panel-${entry.id}">
             <div class="info-panel-row">
               ${locationHtml}
-              <div class="info-placeholder">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
-                <span>Photos coming soon</span>
+              <div class="photo-slot">
+                ${entry.photo
+                  ? `<img class="photo-thumb" src="${entry.photo}" alt="Entry photo">`
+                  : `<button class="add-photo-btn add-photo-btn-info">
+                      <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                      Add photo
+                    </button>`
+                }
               </div>
             </div>
           </div>
@@ -872,10 +975,10 @@ class GoodThings {
                 </button>`;
               }).join('')}
             </div>
-            <button class="add-photo-btn">
+            ${!entry.photo ? `<button class="add-photo-btn">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
               Add a photo
-            </button>
+            </button>` : ''}
           </div>
 
         </div>

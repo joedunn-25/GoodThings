@@ -483,6 +483,7 @@ main {
 
 .info-panel-row {
   display: flex;
+  align-items: center;
   gap: 16px;
   padding-top: 12px;
   padding-left: 4px;
@@ -498,7 +499,7 @@ main {
   border-radius: 8px;
   padding: 7px 12px;
   flex: 1;
-  border: 1px dashed #e2e8f0;
+  border: 1px solid #e8ecf0;
 }
 
 /* ── Photo slot in info panel ──────────────────────────────────────────── */
@@ -508,10 +509,10 @@ main {
 }
 
 .photo-thumb {
-  width: 64px;
-  height: 64px;
+  width: 70px;
+  height: 70px;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: 10px;
   display: block;
 }
 
@@ -547,8 +548,8 @@ main {
 }
 
 .add-photo-btn-info {
-  width: 64px;
-  height: 64px;
+  width: 70px;
+  height: 70px;
   flex-direction: column;
   justify-content: center;
   gap: 4px;

@@ -1,6 +1,10 @@
 // ── Category definitions ──────────────────────────────────────────────────
 
 const CATEGORIES = {
+  good: {
+    id: 'good', label: 'Good', color: '#f0f9f8', iconColor: '#48bb78',
+    svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/></svg>'
+  },
   people: {
     id: 'people', label: 'People', color: '#e0f2f0', iconColor: '#2ec4b6',
     svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="9" cy="7" r="4"/><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/></svg>'
@@ -32,7 +36,7 @@ const CATEGORIES = {
 };
 
 const CATEGORY_ORDER = ['people', 'places', 'nature', 'music', 'views', 'reading', 'moment'];
-const DEFAULT_CATEGORY = null;  // no default — user picks in the countdown panel
+const DEFAULT_CATEGORY = 'good';  // fallback when user doesn't pick a category
 const COUNTDOWN_DURATION = 8000;
 
 // Star icon shown when no category is selected
@@ -398,7 +402,7 @@ class GoodThings {
       id: crypto.randomUUID(),
       text,
       timestamp: new Date().toISOString(),
-      category: null,
+      category: DEFAULT_CATEGORY,
       favorite: false,
       photo: null,
       location_name: null
@@ -780,12 +784,12 @@ class GoodThings {
     // Add inline thumbnail to card row
     const card = document.querySelector(`.good-thing-card[data-id="${entryId}"]`);
     if (card) {
-      const actions = card.querySelector('.card-actions');
-      if (actions && !card.querySelector('.card-photo')) {
+      const content = card.querySelector('.card-content');
+      if (content && !card.querySelector('.card-photo')) {
         const photoDiv = document.createElement('div');
         photoDiv.className = 'card-photo';
         photoDiv.innerHTML = `<img class="card-photo-thumb" src="${dataUrl}" alt="Entry photo">`;
-        card.insertBefore(photoDiv, actions);
+        content.after(photoDiv);
       }
     }
     // Remove "Add photo" button from info panel
@@ -971,21 +975,17 @@ class GoodThings {
   }
 
   renderCard(entry) {
-    // Icon circle — star for uncategorised, category icon otherwise
-    const cat = entry.category ? CATEGORIES[entry.category] : null;
-    const circleStyle = cat
-      ? `background:${cat.color};color:${cat.iconColor}`
-      : `background:#f0f9f8;color:#48bb78`;
-    const circleIcon = cat ? cat.svg : STAR_SVG;
+    // Icon circle — always resolved via CATEGORIES (falls back to 'good')
+    const cat = CATEGORIES[entry.category] || CATEGORIES[DEFAULT_CATEGORY];
+    const circleStyle = `background:${cat.color};color:${cat.iconColor}`;
+    const circleIcon = cat.svg;
 
     const timeStr   = this.formatTime(new Date(entry.timestamp));
     const favFill   = entry.favorite ? 'currentColor' : 'none';
     const favStroke = entry.favorite ? '0' : '1.8';
 
-    // Meta line — only show category label if one is set
-    const metaExtra = cat
-      ? `<span class="meta-dot">·</span><span class="cat-label">${cat.label}</span>`
-      : '';
+    // Meta line — always shows category label
+    const metaExtra = `<span class="meta-dot">·</span><span class="cat-label">${cat.label}</span>`;
 
     // Location row in info panel
     const entryAge = Date.now() - new Date(entry.timestamp).getTime();
@@ -1021,6 +1021,23 @@ class GoodThings {
             <div class="card-meta">
               <span class="good-thing-time">${timeStr}</span>
               ${metaExtra}
+              <div class="card-actions">
+                <button class="fav-btn ${entry.favorite ? 'active' : ''}"
+                        aria-label="${entry.favorite ? 'Remove from favorites' : 'Add to favorites'}"
+                        data-id="${entry.id}">
+                  <svg viewBox="0 0 24 24" width="15" height="15">
+                    <path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3z"
+                          fill="${favFill}" stroke="currentColor" stroke-width="${favStroke}"/>
+                  </svg>
+                </button>
+                <button class="info-btn" aria-label="More info" data-id="${entry.id}">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                    <circle cx="12" cy="12" r="9"/>
+                    <line x1="12" y1="8" x2="12" y2="8.01"/>
+                    <line x1="12" y1="11" x2="12" y2="16"/>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1029,24 +1046,6 @@ class GoodThings {
                 <img class="card-photo-thumb" src="${entry.photo}" alt="Entry photo">
               </div>`
             : ''}
-
-          <div class="card-actions">
-            <button class="info-btn" aria-label="More info" data-id="${entry.id}">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                <circle cx="12" cy="12" r="9"/>
-                <line x1="12" y1="8" x2="12" y2="8.01"/>
-                <line x1="12" y1="11" x2="12" y2="16"/>
-              </svg>
-            </button>
-            <button class="fav-btn ${entry.favorite ? 'active' : ''}"
-                    aria-label="${entry.favorite ? 'Remove from favorites' : 'Add to favorites'}"
-                    data-id="${entry.id}">
-              <svg viewBox="0 0 24 24" width="18" height="18">
-                <path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3z"
-                      fill="${favFill}" stroke="currentColor" stroke-width="${favStroke}"/>
-              </svg>
-            </button>
-          </div>
 
           <div class="info-panel" id="info-panel-${entry.id}">
             <div class="info-panel-row">

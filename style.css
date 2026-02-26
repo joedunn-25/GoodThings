@@ -350,7 +350,6 @@ main {
   align-items: center;
 
   background: var(--card-bg);
-  border-radius: var(--card-radius);
   padding: 14px 12px 14px 14px;
   position: relative;
   z-index: 1;

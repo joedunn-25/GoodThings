@@ -71,6 +71,7 @@ class GoodThings {
     this.activeCategoryPanelId = null;
     this.countdownTimer        = null;
     this.countdownStart        = null;
+    this.swipedCardId          = null;
 
     // Platform detection
     this.isNative = !!(window.Capacitor?.isNativePlatform?.());
@@ -262,6 +263,20 @@ class GoodThings {
     });
 
     this.list.addEventListener('click', (e) => {
+      // Close any swiped card when tapping elsewhere
+      if (this.swipedCardId) {
+        if (!e.target.closest('.swipe-delete-btn')) {
+          this.closeSwipe(this.swipedCardId);
+          return; // absorb the tap
+        }
+      }
+
+      // Swipe delete button (outside the card element)
+      if (e.target.closest('.swipe-delete-btn')) {
+        this.deleteEntry(e.target.closest('.swipe-delete-btn').dataset.id);
+        return;
+      }
+
       // Date group header toggle
       const header = e.target.closest('.date-group-header');
       if (header) {
@@ -276,18 +291,87 @@ class GoodThings {
       if (!card) return;
       const id = card.dataset.id;
 
-      if (e.target.closest('.delete-btn'))                 this.deleteEntry(id);
-      else if (e.target.closest('.info-btn'))              this.toggleInfoPanel(id);
+      if (e.target.closest('.info-btn'))              this.toggleInfoPanel(id);
       else if (e.target.closest('.fav-btn'))               this.toggleFavorite(id);
       else if (e.target.closest('.category-pill'))         this.setCategory(id, e.target.closest('.category-pill').dataset.category);
       else if (e.target.closest('.add-photo-btn'))         alert('Photo support coming soon!');
       else if (e.target.closest('.countdown-dismiss-btn')) this.dismissCategoryPanel(id);
     });
 
+    this.initSwipe();
+
     this.logoutBtn.addEventListener('click', async () => {
       await AppAuth.signOut();
       window.location.reload();
     });
+  }
+
+  // ── Swipe to delete ───────────────────────────────────────────────────────
+
+  initSwipe() {
+    let startX = 0, startY = 0, currentX = 0;
+    let activeCard = null;
+    let isSwiping = false;
+    let isScrolling = false;
+    const deleteWidth = 80;
+    const threshold = 50;
+
+    this.list.addEventListener('touchstart', (e) => {
+      const card = e.target.closest('.good-thing-card');
+      if (!card) return;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      currentX = startX;
+      activeCard = card;
+      isSwiping = false;
+      isScrolling = false;
+      card.style.transition = 'none';
+    }, { passive: true });
+
+    this.list.addEventListener('touchmove', (e) => {
+      if (!activeCard) return;
+      const touchX = e.touches[0].clientX;
+      const touchY = e.touches[0].clientY;
+      const deltaX = touchX - startX;
+      const deltaY = touchY - startY;
+
+      if (!isSwiping && !isScrolling) {
+        if (Math.abs(deltaY) > Math.abs(deltaX) + 5) { isScrolling = true; return; }
+        if (Math.abs(deltaX) > 10) isSwiping = true;
+      }
+      if (isScrolling || !isSwiping) return;
+
+      e.preventDefault();
+      currentX = touchX;
+      const base = this.swipedCardId === activeCard.dataset.id ? -deleteWidth : 0;
+      const tx = Math.max(-deleteWidth, Math.min(0, base + deltaX));
+      activeCard.style.transform = `translateX(${tx}px)`;
+    }, { passive: false });
+
+    this.list.addEventListener('touchend', () => {
+      if (!activeCard || !isSwiping) { activeCard = null; return; }
+      activeCard.style.transition = 'transform 0.3s ease';
+      const base = this.swipedCardId === activeCard.dataset.id ? -deleteWidth : 0;
+      const finalX = base + (currentX - startX);
+      if (finalX < -threshold) {
+        activeCard.style.transform = `translateX(-${deleteWidth}px)`;
+        this.swipedCardId = activeCard.dataset.id;
+      } else {
+        activeCard.style.transform = 'translateX(0)';
+        if (this.swipedCardId === activeCard.dataset.id) this.swipedCardId = null;
+      }
+      activeCard = null;
+      isSwiping = false;
+    }, { passive: true });
+  }
+
+  closeSwipe(id) {
+    const card = document.querySelector(`.good-thing-card[data-id="${id}"]`);
+    if (card) {
+      card.style.transition = 'transform 0.3s ease';
+      card.style.transform = 'translateX(0)';
+    }
+    if (this.swipedCardId === id) this.swipedCardId = null;
   }
 
   // ── Save / Delete ─────────────────────────────────────────────────────────
@@ -471,19 +555,43 @@ class GoodThings {
   async _captureLocation(entry) {
     try {
       let coords;
+      console.log('[Location] Starting. isNative:', this.isNative,
+        'CapGeo:', !!window.Capacitor?.Plugins?.Geolocation,
+        'navGeo:', !!navigator.geolocation);
 
       if (this.isNative && window.Capacitor?.Plugins?.Geolocation) {
-        // Trigger the iOS permission dialog (required in Capacitor 8 before getCurrentPosition)
-        const status = await window.Capacitor.Plugins.Geolocation.requestPermissions();
-        if (status.location !== 'granted' && status.location !== 'limited') {
-          throw new Error('Location permission ' + status.location);
+        try {
+          console.log('[Location] Requesting Capacitor permissions…');
+          const status = await window.Capacitor.Plugins.Geolocation.requestPermissions();
+          console.log('[Location] Permission status:', JSON.stringify(status));
+          if (status.location !== 'granted' && status.location !== 'limited') {
+            throw new Error('Location permission ' + status.location);
+          }
+          console.log('[Location] Getting position via Capacitor…');
+          const position = await window.Capacitor.Plugins.Geolocation.getCurrentPosition({
+            timeout: 10000,
+            enableHighAccuracy: false
+          });
+          coords = position.coords;
+          console.log('[Location] Capacitor coords:', coords.latitude, coords.longitude);
+        } catch (capErr) {
+          console.warn('[Location] Capacitor failed, trying browser fallback:', capErr?.message);
+          // Fall back to browser geolocation API (works in WKWebView)
+          if (navigator.geolocation) {
+            coords = await new Promise((resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(
+                pos => resolve(pos.coords),
+                err => reject(err),
+                { timeout: 10000, enableHighAccuracy: false }
+              );
+            });
+            console.log('[Location] Browser fallback coords:', coords.latitude, coords.longitude);
+          } else {
+            throw capErr; // re-throw original error
+          }
         }
-        const position = await window.Capacitor.Plugins.Geolocation.getCurrentPosition({
-          timeout: 10000,
-          enableHighAccuracy: false
-        });
-        coords = position.coords;
       } else if (navigator.geolocation) {
+        console.log('[Location] Using browser geolocation…');
         coords = await new Promise((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(
             pos => resolve(pos.coords),
@@ -491,22 +599,33 @@ class GoodThings {
             { timeout: 10000, enableHighAccuracy: false }
           );
         });
+        console.log('[Location] Browser coords:', coords.latitude, coords.longitude);
       } else {
-        return; // No geolocation available
+        console.log('[Location] No geolocation available');
+        return;
       }
 
+      console.log('[Location] Reverse geocoding…');
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`,
         { headers: { 'Accept-Language': 'en' } }
       );
-      if (!response.ok) return;
+      if (!response.ok) {
+        console.error('[Location] Geocode HTTP error:', response.status);
+        return;
+      }
       const data = await response.json();
+      console.log('[Location] Geocode result:', data.display_name);
 
       const name = this._formatLocation(data.address, data.display_name);
-      if (!name) return;
+      if (!name) {
+        console.warn('[Location] Could not format location name');
+        return;
+      }
 
       entry.location_name = name;
       this.save();
+      console.log('[Location] Saved:', name);
 
       // Update info panel DOM if open — swap "Getting location…" for the real name
       const infoPanel = document.getElementById(`info-panel-${entry.id}`);
@@ -516,7 +635,6 @@ class GoodThings {
           locRow.classList.remove('info-pending');
           locRow.querySelector('span').textContent = name;
         } else {
-          // Panel was open but didn't have a location row (web case) — inject it
           const row = infoPanel.querySelector('.info-panel-row');
           if (row) {
             const div = document.createElement('div');
@@ -529,8 +647,7 @@ class GoodThings {
 
       AppSync.syncUpdate(entry);
     } catch (err) {
-      console.error('Location capture failed:', err?.message || err);
-      // Remove the "Getting location…" row so it doesn't stay on screen forever
+      console.error('[Location] Capture failed:', err?.message || err);
       const panel = document.getElementById(`info-panel-${entry.id}`);
       const row = panel?.querySelector('.info-location.info-pending');
       if (row) row.remove();
@@ -599,6 +716,7 @@ class GoodThings {
   // ── Rendering ─────────────────────────────────────────────────────────────
 
   render() {
+    this.swipedCardId = null;
     let entries = this.goodThings;
     if (this.favFilterActive) entries = entries.filter(e => e.favorite);
 
@@ -689,77 +807,77 @@ class GoodThings {
     }
 
     return `
-      <div class="good-thing-card" data-id="${entry.id}">
-
-        <div class="cat-icon-circle" style="${circleStyle}">
-          ${circleIcon}
+      <div class="swipe-container">
+        <div class="swipe-actions">
+          <button class="swipe-delete-btn" data-id="${entry.id}">Delete</button>
         </div>
+        <div class="good-thing-card" data-id="${entry.id}">
 
-        <div class="card-content">
-          <div class="good-thing-text">${this.escapeHtml(entry.text)}</div>
-          <div class="card-meta">
-            <span class="good-thing-time">${timeStr}</span>
-            ${metaExtra}
+          <div class="cat-icon-circle" style="${circleStyle}">
+            ${circleIcon}
           </div>
-        </div>
 
-        <div class="card-actions">
-          <button class="info-btn" aria-label="More info" data-id="${entry.id}">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-              <circle cx="12" cy="12" r="9"/>
-              <line x1="12" y1="8" x2="12" y2="8.01"/>
-              <line x1="12" y1="11" x2="12" y2="16"/>
-            </svg>
-          </button>
-          <button class="fav-btn ${entry.favorite ? 'active' : ''}"
-                  aria-label="${entry.favorite ? 'Remove from favorites' : 'Add to favorites'}"
-                  data-id="${entry.id}">
-            <svg viewBox="0 0 24 24" width="18" height="18">
-              <path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3z"
-                    fill="${favFill}" stroke="currentColor" stroke-width="${favStroke}"/>
-            </svg>
-          </button>
-          <button class="delete-btn" aria-label="Delete" data-id="${entry.id}">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
-              <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-            </svg>
-          </button>
-        </div>
-
-        <div class="info-panel" id="info-panel-${entry.id}">
-          <div class="info-panel-row">
-            ${locationHtml}
-            <div class="info-placeholder">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
-              <span>Photos coming soon</span>
+          <div class="card-content">
+            <div class="good-thing-text">${this.escapeHtml(entry.text)}</div>
+            <div class="card-meta">
+              <span class="good-thing-time">${timeStr}</span>
+              ${metaExtra}
             </div>
           </div>
-        </div>
 
-        <div class="cat-panel" id="cat-panel-${entry.id}">
-          <div class="cat-panel-header">
-            <span class="cat-panel-label">What kind of good thing?</span>
-            <div class="countdown-wrap">
-              <div class="countdown-bar"><div class="countdown-bar-fill"></div></div>
-              <span class="countdown-digits">${Math.ceil(COUNTDOWN_DURATION / 1000)}</span>
+          <div class="card-actions">
+            <button class="info-btn" aria-label="More info" data-id="${entry.id}">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+                <circle cx="12" cy="12" r="9"/>
+                <line x1="12" y1="8" x2="12" y2="8.01"/>
+                <line x1="12" y1="11" x2="12" y2="16"/>
+              </svg>
+            </button>
+            <button class="fav-btn ${entry.favorite ? 'active' : ''}"
+                    aria-label="${entry.favorite ? 'Remove from favorites' : 'Add to favorites'}"
+                    data-id="${entry.id}">
+              <svg viewBox="0 0 24 24" width="18" height="18">
+                <path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09C10.91 3.81 9.24 3 7.5 3 4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.32C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3z"
+                      fill="${favFill}" stroke="currentColor" stroke-width="${favStroke}"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="info-panel" id="info-panel-${entry.id}">
+            <div class="info-panel-row">
+              ${locationHtml}
+              <div class="info-placeholder">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                <span>Photos coming soon</span>
+              </div>
             </div>
-            <button class="countdown-dismiss-btn" data-id="${entry.id}" aria-label="Dismiss">×</button>
           </div>
-          <div class="cat-pills">
-            ${CATEGORY_ORDER.map(catId => {
-              const c = CATEGORIES[catId];
-              return `<button class="category-pill ${entry.category === catId ? 'selected' : ''}" data-category="${catId}">
-                <span class="pill-icon" style="color:${c.iconColor}">${c.svg}</span>
-                <span class="pill-label">${c.label}</span>
-              </button>`;
-            }).join('')}
-          </div>
-          <button class="add-photo-btn">
-            <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
-            Add a photo
-          </button>
-        </div>
 
+          <div class="cat-panel" id="cat-panel-${entry.id}">
+            <div class="cat-panel-header">
+              <span class="cat-panel-label">What kind of good thing?</span>
+              <div class="countdown-wrap">
+                <div class="countdown-bar"><div class="countdown-bar-fill"></div></div>
+                <span class="countdown-digits">${Math.ceil(COUNTDOWN_DURATION / 1000)}</span>
+              </div>
+              <button class="countdown-dismiss-btn" data-id="${entry.id}" aria-label="Dismiss">×</button>
+            </div>
+            <div class="cat-pills">
+              ${CATEGORY_ORDER.map(catId => {
+                const c = CATEGORIES[catId];
+                return `<button class="category-pill ${entry.category === catId ? 'selected' : ''}" data-category="${catId}">
+                  <span class="pill-icon" style="color:${c.iconColor}">${c.svg}</span>
+                  <span class="pill-label">${c.label}</span>
+                </button>`;
+              }).join('')}
+            </div>
+            <button class="add-photo-btn">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+              Add a photo
+            </button>
+          </div>
+
+        </div>
       </div>
     `;
   }

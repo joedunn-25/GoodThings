@@ -54,15 +54,16 @@ main {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 20px 0;
-  padding-top: calc(14px + env(safe-area-inset-top, 0px));
+  padding: 18px 20px 14px;
+  padding-top: calc(18px + env(safe-area-inset-top, 0px));
   flex-shrink: 0;
 }
 
 .app-title {
-  font-size: 1.5rem;
-  font-weight: 600;
+  font-size: 1.6rem;
+  font-weight: 400;
   color: var(--text);
+  font-family: Georgia, 'Times New Roman', serif;
 }
 
 .header-actions {
@@ -118,7 +119,7 @@ main {
 
 .entry-area {
   flex-shrink: 0;
-  padding: 16px 20px 0;
+  padding: 12px 20px 14px;
 }
 
 /* ── Input bar ──────────────────────────────────────────────────────────── */
@@ -344,11 +345,11 @@ main {
 
 .good-thing-card {
   display: grid;
-  grid-template-columns: 48px 1fr auto;
+  grid-template-columns: 38px 1fr auto;
   grid-template-rows: auto;
-  column-gap: 12px;
+  column-gap: 10px;
   row-gap: 0;
-  align-items: center;
+  align-items: start;
 
   background: var(--card-bg);
   padding: 14px 12px 14px 14px;
@@ -371,15 +372,16 @@ main {
 .cat-icon-circle {
   grid-column: 1;
   grid-row: 1;
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   transition: background 0.2s, color 0.2s;
-  align-self: center;
+  align-self: start;
+  margin-top: 2px;
 }
 
 /* ── Card content ───────────────────────────────────────────────────────── */
@@ -391,11 +393,11 @@ main {
 }
 
 .good-thing-text {
-  font-size: 1rem;
-  line-height: 1.45;
-  color: var(--text);
+  font-size: 0.93rem;
+  line-height: 1.5;
+  color: #3a4556;
   word-break: break-word;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .card-meta {
@@ -424,7 +426,8 @@ main {
   flex-direction: row;
   align-items: center;
   gap: 2px;
-  align-self: center;
+  align-self: start;
+  margin-top: 2px;
 }
 
 .info-btn,

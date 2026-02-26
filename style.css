@@ -492,8 +492,8 @@ main {
 .info-placeholder {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.8rem;
+  gap: 8px;
+  font-size: 0.85rem;
   color: var(--text-light);
   background: none;
   border-radius: 8px;

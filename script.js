@@ -28,8 +28,11 @@ const CATEGORIES = {
 };
 
 const CATEGORY_ORDER = ['people', 'places', 'nature', 'music', 'views', 'reading'];
-const DEFAULT_CATEGORY = 'people';
+const DEFAULT_CATEGORY = null;  // no default — user picks in the countdown panel
 const COUNTDOWN_DURATION = 8000;
+
+// Star icon shown when no category is selected
+const STAR_SVG = '<svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>';
 
 // ── Main class ────────────────────────────────────────────────────────────
 
@@ -305,9 +308,10 @@ class GoodThings {
       id: crypto.randomUUID(),
       text,
       timestamp: new Date().toISOString(),
-      category: DEFAULT_CATEGORY,
+      category: null,
       favorite: false,
-      photo: null
+      photo: null,
+      location_name: null
     };
 
     this.goodThings.unshift(entry);
@@ -315,6 +319,7 @@ class GoodThings {
     this.render();
     this.openCategoryPanel(entry.id);
     AppSync.syncAdd(entry);
+    this._captureLocation(entry); // fire and forget
   }
 
   deleteEntry(id) {
@@ -424,7 +429,12 @@ class GoodThings {
     }
 
     const label = document.querySelector(`.good-thing-card[data-id="${id}"] .cat-label`);
-    if (label) label.textContent = cat.label;
+    if (label) {
+      label.textContent = cat.label;
+      label.classList.remove('hidden');
+    }
+    const dot = document.querySelector(`.good-thing-card[data-id="${id}"] .meta-dot`);
+    if (dot) dot.classList.remove('hidden');
 
     AppSync.syncUpdate(entry);
   }
@@ -447,10 +457,81 @@ class GoodThings {
     if (panel) panel.classList.add('open');
   }
 
+  // ── Location capture ──────────────────────────────────────────────────────
+
+  async _captureLocation(entry) {
+    try {
+      let coords;
+
+      if (this.isNative && window.Capacitor?.Plugins?.Geolocation) {
+        const position = await window.Capacitor.Plugins.Geolocation.getCurrentPosition({
+          timeout: 10000,
+          enableHighAccuracy: false
+        });
+        coords = position.coords;
+      } else if (navigator.geolocation) {
+        coords = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            pos => resolve(pos.coords),
+            err => reject(err),
+            { timeout: 10000, enableHighAccuracy: false }
+          );
+        });
+      } else {
+        return; // No geolocation available
+      }
+
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`,
+        { headers: { 'Accept-Language': 'en' } }
+      );
+      if (!response.ok) return;
+      const data = await response.json();
+
+      const name = this._formatLocation(data.address, data.display_name);
+      if (!name) return;
+
+      entry.location_name = name;
+      this.save();
+
+      // Update info panel DOM if open — swap "Getting location…" for the real name
+      const infoPanel = document.getElementById(`info-panel-${entry.id}`);
+      if (infoPanel) {
+        const locRow = infoPanel.querySelector('.info-location');
+        if (locRow) {
+          locRow.classList.remove('info-pending');
+          locRow.querySelector('span').textContent = name;
+        } else {
+          // Panel was open but didn't have a location row (web case) — inject it
+          const row = infoPanel.querySelector('.info-panel-row');
+          if (row) {
+            const div = document.createElement('div');
+            div.className = 'info-placeholder info-location';
+            div.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg><span>${this.escapeHtml(name)}</span>`;
+            row.prepend(div);
+          }
+        }
+      }
+
+      AppSync.syncUpdate(entry);
+    } catch (err) {
+      // Silently fail — location is best-effort
+    }
+  }
+
+  _formatLocation(addr, displayName) {
+    if (!addr) return displayName?.split(',').slice(0, 2).join(',').trim() || null;
+    const suburb = addr.suburb || addr.neighbourhood || addr.city_district || addr.village;
+    const city   = addr.city || addr.town || addr.county;
+    if (suburb && city) return `${suburb}, ${city}`;
+    if (city)           return city;
+    return displayName?.split(',').slice(0, 2).join(',').trim() || null;
+  }
+
   // ── Data ──────────────────────────────────────────────────────────────────
 
   normaliseEntry(entry) {
-    return { category: DEFAULT_CATEGORY, favorite: false, photo: null, ...entry };
+    return { category: null, favorite: false, photo: null, location_name: null, ...entry };
   }
 
   save() {
@@ -555,24 +636,52 @@ class GoodThings {
   }
 
   renderCard(entry) {
-    const cat = CATEGORIES[entry.category] || CATEGORIES[DEFAULT_CATEGORY];
-    const timeStr  = this.formatTime(new Date(entry.timestamp));
-    const favFill  = entry.favorite ? 'currentColor' : 'none';
+    // Icon circle — star for uncategorised, category icon otherwise
+    const cat = entry.category ? CATEGORIES[entry.category] : null;
+    const circleStyle = cat
+      ? `background:${cat.color};color:${cat.iconColor}`
+      : `background:#f0f9f8;color:#48bb78`;
+    const circleIcon = cat ? cat.svg : STAR_SVG;
+
+    const timeStr   = this.formatTime(new Date(entry.timestamp));
+    const favFill   = entry.favorite ? 'currentColor' : 'none';
     const favStroke = entry.favorite ? '0' : '1.8';
+
+    // Meta line — only show category label if one is set
+    const metaExtra = cat
+      ? `<span class="meta-dot">·</span><span class="cat-label">${cat.label}</span>`
+      : '';
+
+    // Location row in info panel
+    const entryAge = Date.now() - new Date(entry.timestamp).getTime();
+    const isNew = entryAge < 30000;
+    let locationHtml = '';
+    if (entry.location_name) {
+      locationHtml = `
+        <div class="info-placeholder info-location">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+          <span>${this.escapeHtml(entry.location_name)}</span>
+        </div>`;
+    } else if (isNew && this.isNative) {
+      locationHtml = `
+        <div class="info-placeholder info-location info-pending">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+          <span>Getting location…</span>
+        </div>`;
+    }
 
     return `
       <div class="good-thing-card" data-id="${entry.id}">
 
-        <div class="cat-icon-circle" style="background:${cat.color};color:${cat.iconColor}">
-          ${cat.svg}
+        <div class="cat-icon-circle" style="${circleStyle}">
+          ${circleIcon}
         </div>
 
         <div class="card-content">
           <div class="good-thing-text">${this.escapeHtml(entry.text)}</div>
           <div class="card-meta">
             <span class="good-thing-time">${timeStr}</span>
-            <span class="meta-dot">·</span>
-            <span class="cat-label">${cat.label}</span>
+            ${metaExtra}
           </div>
         </div>
 
@@ -601,10 +710,7 @@ class GoodThings {
 
         <div class="info-panel" id="info-panel-${entry.id}">
           <div class="info-panel-row">
-            <div class="info-placeholder">
-              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-              <span>Location coming soon</span>
-            </div>
+            ${locationHtml}
             <div class="info-placeholder">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
               <span>Photos coming soon</span>

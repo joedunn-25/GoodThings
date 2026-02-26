@@ -32,15 +32,16 @@ window.AppSync = {
         user_id: this._userId,
         text: entry.text,
         timestamp: entry.timestamp,
-        category: entry.category || 'people',
-        favorite: entry.favorite || false
+        category: entry.category || null,
+        favorite: entry.favorite || false,
+        location_name: entry.location_name || null
       },
       { onConflict: 'id', ignoreDuplicates: true }
     );
     if (error) this._queueAdd(entry);
   },
 
-  // Called after updating an entry's category or favorite status.
+  // Called after updating an entry's category, favorite, or location.
   // Upserts to Supabase immediately if possible; no offline queue (non-critical).
   async syncUpdate(entry) {
     if (!this._db || !this._userId || !navigator.onLine) return;
@@ -50,8 +51,9 @@ window.AppSync = {
         user_id: this._userId,
         text: entry.text,
         timestamp: entry.timestamp,
-        category: entry.category || 'people',
-        favorite: entry.favorite || false
+        category: entry.category || null,
+        favorite: entry.favorite || false,
+        location_name: entry.location_name || null
       },
       { onConflict: 'id', ignoreDuplicates: false }
     );
@@ -86,8 +88,9 @@ window.AppSync = {
         user_id: this._userId,
         text: e.text,
         timestamp: e.timestamp,
-        category: e.category || 'people',
-        favorite: e.favorite || false
+        category: e.category || null,
+        favorite: e.favorite || false,
+        location_name: e.location_name || null
       }));
       const { error } = await this._db.from('entries')
         .upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
@@ -110,7 +113,7 @@ window.AppSync = {
     if (!this._db || !this._userId) return;
 
     const { data: remote, error } = await this._db.from('entries')
-      .select('id, text, timestamp, category, favorite')
+      .select('id, text, timestamp, category, favorite, location_name')
       .eq('user_id', this._userId)
       .order('timestamp', { ascending: false });
 
@@ -133,8 +136,9 @@ window.AppSync = {
         user_id: this._userId,
         text: e.text,
         timestamp: e.timestamp,
-        category: e.category || 'people',
-        favorite: e.favorite || false
+        category: e.category || null,
+        favorite: e.favorite || false,
+        location_name: e.location_name || null
       }));
 
     if (toUpload.length) {
@@ -149,8 +153,9 @@ window.AppSync = {
         id: e.id,
         text: e.text,
         timestamp: e.timestamp,
-        category: e.category || 'people',
-        favorite: e.favorite || false
+        category: e.category || null,
+        favorite: e.favorite || false,
+        location_name: e.location_name || null
       }));
 
     // Merge and sort newest-first

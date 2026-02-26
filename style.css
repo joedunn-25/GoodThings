@@ -495,11 +495,15 @@ main {
   gap: 6px;
   font-size: 0.8rem;
   color: var(--text-light);
-  background: #f7fafc;
+  background: none;
   border-radius: 8px;
-  padding: 7px 12px;
+  padding: 7px 0;
   flex: 1;
-  border: 1px solid #e8ecf0;
+  border: none;
+}
+
+.info-location svg {
+  color: var(--accent);
 }
 
 /* ── Photo slot in info panel ──────────────────────────────────────────── */
